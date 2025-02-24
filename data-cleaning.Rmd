@@ -224,3 +224,524 @@ linelist <- linelist %>%
 
 linelist$village
 ```
+
+```{r}
+cumulative_case_counts <- linelist %>%  # begin with case linelist
+  count(date_onset) %>%                 # count of rows per day, as column 'n'   
+  mutate(cumulative_cases = cumsum(n))  # new column, of the cumulative sum at each row
+
+head(cumulative_case_counts)
+```
+
+```{r}
+linelist <- linelist_raw %>%
+  janitor::clean_names() %>%
+  rename(date_infection       = infection_date,           # manually re-name columns
+         date_hospitalisation = hosp_date,
+         date_outcome         = date_of_outcome) %>% 
+  select(-c(row_num, merged_header, x28)) %>%             # remove column
+  distinct() %>%
+  mutate(bmi = wt_kg / (ht_cm/100)^2) %>%                 # add new column
+  mutate(across(contains("date"), as.Date),               # convert class of columns 
+         generation = as.numeric(generation),
+         age        = as.numeric(age))
+```
+
+### Re-code Values
+
+-   `recode()` is designed to handle factors and charater vectors only.
+
+```{r}
+# # fix incorrect values                   # old value       # new value
+# linelist <- linelist %>% 
+#   mutate(date_onset = recode(date_onset, "2014-14-15" = "2014-04-15"))
+
+linelist <- linelist %>%                 
+  mutate(date_onset = case_when(
+    date_onset == as.Date("2014-14-15", format = "%Y-%d-%m") ~ as.Date("2014-04-15"),
+    TRUE ~ date_onset
+  ))
+```
+
+```{r}
+table(linelist$hospital, useNA = "always")  # print table of all unique values, including missing  
+```
+
+```{r}
+linelist <- linelist %>% 
+  mutate(hospital = recode(hospital,
+                           # for reference: OLD = NEW
+                           "Mitylira Hopital"  = "Military Hospital",
+                           "Mitylira Hospital" = "Military Hospital",
+                           "Military Hopital"  = "Military Hospital",
+                           "Port Hopital"      = "Port Hospital",
+                           "Central Hopital"   = "Central Hospital",
+                           "other"             = "Other",
+                           "St. Marks Maternity Hopital (SMMH)" = "St. Mark's Maternity Hospital (SMMH)"
+                     )
+         )
+```
+
+```{r}
+table(linelist$hospital, useNA = "always")
+```
+
+### Replace By Logic
+
+```{r}
+# Example: change gender of one specific observation to "Female" 
+linelist <- linelist %>% 
+  mutate(gender = replace(gender, case_id == "2195", "Female"))
+```
+
+```{r}
+linelist$gender[linelist$case_id == "2195"] <- "Female"
+```
+
+```{r}
+linelist <- linelist %>% 
+  mutate(source_known = ifelse(!is.na(source), "known", "unknown"))
+```
+
+```{r}
+# Create a column, date_death column, which equates to NA if patient is not yet dead
+linelist <- linelist %>%
+  mutate(date_death = if_else(outcome == "Death", date_outcome, NA_Date_))
+```
+
+```{r}
+# Complex logic
+linelist <- linelist %>% 
+  mutate(age_years = case_when(
+    age_unit == "years"  ~ age,       # if age unit is years, just use the age
+    age_unit == "months" ~ age/12,    # if age unit is months, new value is the age divided by 12
+    is.na(age_unit)      ~ age)       # if age unit is missing, just assume years
+  )                                   # any other circumstance, assign NA (missing)
+
+linelist
+```
+
+```{r}
+linelist <- linelist %>%
+  mutate(case_status = case_when(
+    ct_blood < 20  ~ "Confirmed",
+    !is.na(source) & fever == "yes" ~ "Suspect",
+    TRUE ~ "To investigate"
+  ))
+```
+
+### Missing Values
+
+```{r}
+linelist <- linelist %>% 
+  mutate(hospital = replace_na(hospital, "Missing"))
+
+linelist
+```
+
+`fct_explicit_na()`
+
+```{r}
+# For a factor column
+linelist <- linelist %>%
+  mutate(hospital = fct_explicit_na(hospital))
+
+linelist$hospital %>% head(10)
+```
+
+`na_if()`
+
+```{r}
+linelist <- linelist %>%
+  mutate(hospital = na_if(hospital, "Missing"))
+```
+
+```{r}
+linelist <- linelist %>%
+  mutate(temp = replace(temp, temp > 40, NA))
+```
+
+```{r}
+linelist <- linelist %>%
+  mutate(date_onset = replace(date_onset, date_onset > as.Date("2001-01-01"), NA))
+```
+
+### Cleaning dictionary
+
+```{r}
+cleaning_dict <- import("/home/jeremy/Work/Data Science/Code in Zip/epirhandbook-master/inst/extdata/case_linelists/cleaning_dict.csv")
+cleaning_dict
+```
+
+```{r}
+linelist <- linelist %>%     # provide or pipe your dataset
+     matchmaker::match_df(
+          dictionary = cleaning_dict,  # name of your dictionary
+          from = "from",               # column with values to be replaced (default is col 1)
+          to = "to",                   # column with final values (default is col 2)
+          by = "col"                   # column with column names (default is col 3)
+  )
+```
+
+```{r}
+linelist <- linelist_raw %>%
+  janitor::clean_names() %>%
+  rename(date_infection       = infection_date,           # manually re-name columns
+         date_hospitalisation = hosp_date,
+         date_outcome         = date_of_outcome) %>% 
+  select(-c(row_num, merged_header, x28)) %>%             # remove column
+  distinct() %>%
+  mutate(bmi = wt_kg / (ht_cm/100)^2) %>%                 # add new column
+  mutate(across(contains("date"), as.Date),               # convert class of columns 
+         generation = as.numeric(generation),
+         age        = as.numeric(age)) %>%
+    # add column: delay to hospitalisation
+    mutate(days_onset_hosp = as.numeric(date_hospitalisation - date_onset)) %>% 
+    # clean values of hospital column
+    mutate(hospital = recode(hospital,
+                              # OLD = NEW
+                              "Mitylira Hopital"  = "Military Hospital",
+                              "Mitylira Hospital" = "Military Hospital",
+                              "Military Hopital"  = "Military Hospital",
+                              "Port Hopital"      = "Port Hospital",
+                              "Central Hopital"   = "Central Hospital",
+                              "other"             = "Other",
+                              "St. Marks Maternity Hopital (SMMH)" = "St. Mark's Maternity Hospital (SMMH)"
+                       )
+           ) %>% 
+    mutate(hospital = replace_na(hospital, "Missing")) %>% 
+    # create age_years column (from age and age_unit)
+    mutate(age_years = case_when(
+          age_unit == "years" ~ age,
+          age_unit == "months" ~ age/12,
+          is.na(age_unit) ~ age,
+          TRUE ~ NA_real_))
+```
+
+## Numeric Categories
+
+```{r}
+summary(linelist$age_years, na.rm = T)
+```
+
+```{r}
+# examine the distribution
+hist(linelist$age_years)
+```
+
+`age_categories()`
+
+```{r}
+linelist <- linelist %>%
+  mutate(
+    age_cat = age_categories(
+      age_years,
+      breakers = c(0, 5, 10, 15, 20,
+                   30, 40, 50, 60, 70)
+    )
+  )
+
+table(linelist$age_cat, useNA = "always")
+```
+
+```{r}
+# Include upper ends for the same categories
+linelist <- linelist %>% 
+  mutate(
+    age_cat = age_categories(
+      age_years, 
+      breakers = c(0, 6, 11, 16, 21, 31, 41, 51, 61, 71),
+      separator = "-"))
+
+# show table
+table(linelist$age_cat, useNA = "always")
+```
+
+```{r}
+# With ceiling set to TRUE
+linelist <- linelist %>% 
+  mutate(
+    age_cat = age_categories(
+      age_years, 
+      breakers = c(0, 5, 10, 15, 20, 30, 40, 50, 60, 70),
+      ceiling = TRUE)) # 70 is ceiling, all above become NA
+
+# show table
+table(linelist$age_cat, useNA = "always")
+```
+
+```{r}
+linelist <- linelist %>% 
+  mutate(
+    age_cat = age_categories(
+      age_years, 
+      lower = 0,
+      upper = 100,
+      by = 10))
+
+# show table
+table(linelist$age_cat, useNA = "always")
+```
+
+`cut()`
+
+```{r}
+# Create new variable, by cutting the numeric age variable lower break is excluded but upper break is included in each category
+linelist <- linelist %>% 
+  mutate(
+    age_cat = cut(
+      age_years,
+      breaks = c(0, 5, 10, 15, 20,
+                 30, 50, 70, 100),
+      include.lowest = TRUE         # include 0 in lowest group
+      ))
+
+# tabulate the number of observations per group
+table(linelist$age_cat, useNA = "always")
+```
+
+```{r}
+# Cross tabulation of the numeric and category columns. 
+table("Numeric Values" = linelist$age_years,   # names specified in table for clarity.
+      "Categories"     = linelist$age_cat,
+      useNA = "always")                        # don't forget to examine NA values
+```
+
+```{r}
+linelist <- linelist %>% 
+  # cut() creates age_cat, automatically of class Factor      
+  mutate(
+    age_cat = cut(
+      age_years,
+      breaks = c(0, 5, 10, 15, 20, 30, 50, 70, 100),          
+      right = FALSE,
+      include.lowest = TRUE,        
+      labels = c("0-4", "5-9", "10-14", "15-19", "20-29", "30-49", "50-69", "70-100")
+    ),
+         
+    # make missing values explicit
+    age_cat = fct_explicit_na(
+      age_cat,
+      na_level = "Missing age"
+    )  # you can specify the label
+  )
+
+linelist
+```
+
+```{r}
+# table to view counts
+table(linelist$age_cat, useNA = "always")
+```
+
+### Quantile Breaks
+
+```{r}
+quantile(
+  linelist$age_years,               # specify numeric vector to work on
+  probs = c(0, .25, .50, .75, .90, .95),   # specify the percentiles you want
+  na.rm = TRUE
+)                            # ignore missing values 
+```
+
+```{r}
+linelist %>%                                # begin with linelist
+  mutate(deciles = cut(age_years,           # create new column decile as cut() on column age_years
+    breaks = quantile(                      # define cut breaks using quantile()
+      age_years,                               # operate on age_years
+      probs = seq(0, 1, by = 0.1),             # 0.0 to 1.0 by 0.1
+      na.rm = TRUE),                           # ignore missing values
+    include.lowest = TRUE)) %>%             # for cut() include age 0
+  janitor::tabyl(deciles)                   # pipe to table to display
+```
+
+### Evenly Size Groups
+
+```{r}
+# make groups with ntile()
+ntile_data <- linelist %>% 
+  mutate(even_groups = ntile(age_years, 10))
+
+# make table of counts and proportions by group
+ntile_table <- ntile_data %>% 
+  janitor::tabyl(even_groups)
+  
+# attach min/max values to demonstrate ranges
+ntile_ranges <- ntile_data %>% 
+  group_by(even_groups) %>% 
+  summarise(
+    min = min(age_years, na.rm=T),
+    max = max(age_years, na.rm=T)
+  )
+```
+
+```{r}
+# combine and print - note that values are present in multiple groups
+left_join(ntile_table, ntile_ranges, by = "even_groups")
+```
+
+```{r}
+linelist <- linelist_raw %>%
+  janitor::clean_names() %>%
+  rename(date_infection       = infection_date,           # manually re-name columns
+         date_hospitalisation = hosp_date,
+         date_outcome         = date_of_outcome) %>% 
+  select(-c(row_num, merged_header, x28)) %>%             # remove column
+  distinct() %>%
+  mutate(bmi = wt_kg / (ht_cm/100)^2) %>%                 # add new column
+  mutate(across(contains("date"), as.Date),               # convert class of columns 
+         generation = as.numeric(generation),
+         age        = as.numeric(age)) %>%
+  # add column: delay to hospitalisation
+  mutate(days_onset_hosp = as.numeric(date_hospitalisation - date_onset)) %>% 
+  # clean values of hospital column
+  mutate(hospital = recode(hospital,
+                            # OLD = NEW
+                            "Mitylira Hopital"  = "Military Hospital",
+                            "Mitylira Hospital" = "Military Hospital",
+                            "Military Hopital"  = "Military Hospital",
+                            "Port Hopital"      = "Port Hospital",
+                            "Central Hopital"   = "Central Hospital",
+                            "other"             = "Other",
+                            "St. Marks Maternity Hopital (SMMH)" = "St. Mark's Maternity Hospital (SMMH)"
+                     )
+         ) %>% 
+  mutate(hospital = replace_na(hospital, "Missing")) %>% 
+  # create age_years column (from age and age_unit)
+  mutate(age_years = case_when(
+        age_unit == "years" ~ age,
+        age_unit == "months" ~ age/12,
+        is.na(age_unit) ~ age,
+        TRUE ~ NA_real_)) %>% 
+  mutate(
+    # age categories: custom
+    age_cat = epikit::age_categories(age_years, breakers = c(0, 5, 10, 15, 20, 30, 50, 70)),
+    # age categories: 0 to 85 by 5s
+    age_cat5 = epikit::age_categories(age_years, breakers = seq(0, 85, 5))
+  )
+```
+
+### Add Rows
+
+```{r}
+linelist <- linelist %>% 
+  add_row(row_num = 666,
+          case_id = "abc",
+          generation = 4,
+          date_infection = as.Date("2020-10-10"),
+          .before = 2)
+```
+
+### Filter Rows
+
+```{r}
+# View first 100 rows
+linelist %>% head(100)     # or use tail() to see the n last rows
+
+# Show row 5 only
+linelist %>% filter(row_number() == 5)
+
+# View rows 2 through 20, and three specific columns
+linelist %>% filter(row_number() %in% 2:20) %>% select(date_onset, outcome, age)
+```
+
+```{r}
+linelist <- linelist %>% 
+  # keep rows where onset is after 1 June 2013 OR where onset is missing and it was a hospital OTHER than Hospital A or B
+  filter(date_onset > as.Date("2013-06-01") | (is.na(date_onset) & !hospital %in% c("Hospital A", "Hospital B")))
+
+nrow(linelist)
+```
+
+```{r}
+table(Hospital  = linelist$hospital,                     # hospital name
+      YearOnset = lubridate::year(linelist$date_onset),  # year of date_onset
+      useNA     = "always")                              # show missing values
+```
+
+```{r}
+# dataframe <- filter(dataframe, condition(s) for rows to keep)
+linelist <- filter(linelist, !is.na(case_id))
+linelist
+```
+
+```{r}
+linelist <- linelist_raw %>%
+  janitor::clean_names() %>%
+  rename(date_infection       = infection_date,           # manually re-name columns
+         date_hospitalisation = hosp_date,
+         date_outcome         = date_of_outcome) %>% 
+  select(-c(row_num, merged_header, x28)) %>%             # remove column
+  distinct() %>%
+  mutate(bmi = wt_kg / (ht_cm/100)^2) %>%                 # add new column
+  mutate(across(contains("date"), as.Date),               # convert class of columns 
+         generation = as.numeric(generation),
+         age        = as.numeric(age)) %>%
+  # add column: delay to hospitalisation
+  mutate(days_onset_hosp = as.numeric(date_hospitalisation - date_onset)) %>% 
+  # clean values of hospital column
+  mutate(hospital = recode(hospital,
+                            # OLD = NEW
+                            "Mitylira Hopital"  = "Military Hospital",
+                            "Mitylira Hospital" = "Military Hospital",
+                            "Military Hopital"  = "Military Hospital",
+                            "Port Hopital"      = "Port Hospital",
+                            "Central Hopital"   = "Central Hospital",
+                            "other"             = "Other",
+                            "St. Marks Maternity Hopital (SMMH)" = "St. Mark's Maternity Hospital (SMMH)"
+                     )
+         ) %>% 
+  mutate(hospital = replace_na(hospital, "Missing")) %>% 
+  # create age_years column (from age and age_unit)
+  mutate(age_years = case_when(
+        age_unit == "years" ~ age,
+        age_unit == "months" ~ age/12,
+        is.na(age_unit) ~ age,
+        TRUE ~ NA_real_)) %>% 
+  mutate(
+    # age categories: custom
+    age_cat = epikit::age_categories(age_years, breakers = c(0, 5, 10, 15, 20, 30, 50, 70)),
+    # age categories: 0 to 85 by 5s
+    age_cat5 = epikit::age_categories(age_years, breakers = seq(0, 85, 5))
+  ) %>%
+  filter(
+          # keep only rows where case_id is not missing
+          !is.na(case_id),  
+          
+          # also filter to keep only the second outbreak
+          date_onset > as.Date("2013-06-01") | (is.na(date_onset) & !hospital %in% 
+                                                  c("Hospital A", "Hospital B")))
+```
+
+### Row-wise calculations
+
+```{r}
+linelist %>%
+  rowwise() %>%
+  mutate(num_symptoms = sum(c(fever, chills, cough, aches, vomit) == "yes")) %>% 
+  ungroup() %>% 
+  select(fever, chills, cough, aches, vomit, num_symptoms) # for display
+```
+
+```{r}
+linelist %>%
+  rowwise() %>%
+  mutate(num_NA_dates = sum(is.na(c_across(contains("date"))))) %>% 
+  ungroup() %>% 
+  select(num_NA_dates, contains("date")) # for display
+```
+
+```{r}
+linelist %>%
+  rowwise() %>%
+  mutate(latest_date = max(c_across(contains("date")), na.rm=T)) %>% 
+  ungroup() %>% 
+  select(latest_date, contains("date"))  # for display
+```
+
+### Arrange and Sort
+
+```{r}
+linelist %>% 
+   arrange(hospital, desc(date_onset))
+```
