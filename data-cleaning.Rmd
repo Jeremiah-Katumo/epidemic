@@ -1,0 +1,226 @@
+---
+title: "data-cleaning"
+output: html_document
+---
+
+```{r}
+pacman::p_load(
+  rio,        # importing data  
+  here,       # relative file pathways  
+  janitor,    # data cleaning and tables
+  lubridate,  # working with dates
+  matchmaker, # dictionary-based cleaning
+  epikit,     # age_categories() function
+  tidyverse   # data management and visualization
+)
+```
+
+```{r}
+linelist_raw <- import("/home/jeremy/Work/Data Science/Code in Zip/epirhandbook/linelist_raw.xlsx")
+linelist_raw
+```
+
+```{r}
+skimr::skim(linelist_raw)
+```
+
+### Automatic Cleaning
+
+```{r}
+names(linelist_raw)
+```
+
+```{r}
+linelist <- linelist_raw %>%
+  janitor::clean_names()
+
+names(linelist)
+```
+
+### Manual Name Cleaning
+
+```{r}
+linelist <- linelist_raw %>%
+  # standardize column name syntax
+  janitor::clean_names() %>%
+  rename(date_infection       = infection_date,
+         date_hospitalisation = hosp_date,
+         date_outcome         = date_of_outcome)
+
+names(linelist)
+```
+
+```{r}
+linelist_raw %>% 
+  select(# NEW name             # OLD name
+         date_infection       = `infection date`,    # rename and KEEP ONLY these columns
+         date_hospitalisation = `hosp date`)
+```
+
+### Keep Columns
+
+```{r}
+linelist %>%
+  select(case_id, date_onset, date_infection, date_hospitalisation,
+         date_outcome, everything()) %>%
+  names()
+```
+
+```{r}
+linelist %>%
+  select(where(is.numeric)) %>%
+  names()
+```
+
+```{r}
+linelist %>%
+  select(contains("date")) %>%
+  names()
+```
+
+-   The function `matches()` works similarly to `contains()` but can be provided a regular example such as multiple strings separated by OR bars within the parentheses
+
+```{r}
+linelist %>%
+  select(matches("onset|hosp|fev")) %>%
+  names()
+```
+
+```{r}
+linelist %>%
+  select(any_of(c("date_onset", "village_origin", 
+                "village_residence", "village_travel"))) %>%
+  names()
+```
+
+### Remove Columns
+
+```{r}
+linelist %>%
+  select(-c(date_onset, fever:vomit)) %>% # remove date_onset and columns starting from fever to vomit
+  names()
+```
+
+```{r}
+linelist$x28 <- NULL # deletes column with base R syntax
+```
+
+### 
+
+```{r}
+linelist <- linelist_raw %>%
+    janitor::clean_names() %>%                              # standardize column name syntax 
+           # NEW name             # OLD name
+    rename(date_infection       = infection_date,           # manually re-name columns
+           date_hospitalisation = hosp_date,
+           date_outcome         = date_of_outcome) %>% 
+    select(-c(row_num, merged_header, x28))                 # remove column
+
+names(linelist)
+```
+
+### Deduplication
+
+```{r}
+linelist <- linelist %>% distinct()
+```
+
+```{r}
+linelist <- linelist_raw %>%
+  janitor::clean_names() %>%
+  rename(date_infection       = infection_date,           # manually re-name columns
+         date_hospitalisation = hosp_date,
+         date_outcome         = date_of_outcome) %>% 
+  select(-c(row_num, merged_header, x28)) %>%             # remove column
+  distinct()
+```
+
+### Transformation
+
+```{r}
+linelist <- linelist %>%
+  mutate(bmi = wt_kg / (ht_cm/100)^2)
+
+linelist
+```
+
+```{r}
+new_col_demo <- linelist %>%                       
+  mutate(
+    new_var_dup    = case_id,             # new column = duplicate/copy another existing column
+    new_var_static = 7,                   # new column = all values the same
+    new_var_static = new_var_static + 5,  # you can overwrite a column, and it can be a calculation using other variables
+    new_var_paste  = stringr::str_glue("{hospital} on ({date_hospitalisation})") # new column = pasting together values from other columns
+  ) %>% 
+  select(case_id, hospital, date_hospitalisation, contains("new"))        # show only new columns, for demonstration purposes
+
+new_col_demo
+```
+
+```{r}
+linelist <- linelist %>% select(-contains("new_var"))
+```
+
+### Convert Column Class
+
+```{r}
+class(linelist$outcome)
+```
+
+```{r}
+linelist <- linelist %>% 
+  mutate(age = as.numeric(age))
+```
+
+### Grouped Data
+
+```{r}
+# age normalized to mean of ALL rows
+linelist %>% 
+  mutate(age_norm = age / mean(age, na.rm = T))
+
+# age normalized to mean of hospital group
+linelist %>% 
+  group_by(hospital) %>% 
+  mutate(age_norm = age / mean(age, na.rm = T))
+```
+
+```{r}
+# Transform multiple columns
+linelist <- linelist %>% 
+  mutate(across(.cols = c(temp, ht_cm, wt_kg), .fns = as.character))
+
+linelist
+```
+
+```{r}
+# To change all columns to character class
+linelist <- linelist %>% 
+  mutate(across(.cols = everything(), .fns = as.character))
+```
+
+```{r}
+# To change all columns to character class
+linelist <- linelist %>% 
+  mutate(across(.cols = contains("date"), .fns = as.character))
+```
+
+```{r}
+linelist <- linelist %>% 
+  mutate(across(.cols = where(is.POSIXct), .fns = as.Date))
+
+linelist
+```
+
+#### Coalesce
+
+```{r}
+names(linelist_raw)
+```
+
+```{r}
+linelist <- linelist %>%
+  mutate(village = coalesce(village_detection, village_residence))
+
+linelist$village
+```
