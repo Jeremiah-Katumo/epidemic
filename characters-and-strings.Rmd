@@ -52,3 +52,175 @@ cat(str_c(first_names, last_names, sep = " ", collapse = ";\n"))
 str_glue("Data include {nrow(linelist_cleaned)} cases and are current to {format(Sys.Date(), '%d %b %Y')}.")
 ```
 
+```{r}
+str_glue("Linelist as of {current_date}.\nLast case hospitalized on {last_hospital}.\n{n_missing_onset} cases are missing date of onset and not shown",
+         current_date = format(Sys.Date(), '%d %b %Y'),
+         last_hospital = format(as.Date(max(linelist$date_hospitalisation, na.rm=T)), '%d %b %Y'),
+         n_missing_onset = nrow(linelist %>% filter(is.na(date_onset)))
+         )
+```
+
+Pulling from a dataframe
+
+```{r}
+# make case data frame
+case_table <- data.frame(
+  zone        = c("Zone 1", "Zone 2", "Zone 3", "Zone 4", "Zone 5"),
+  new_cases   = c(3, 0, 7, 0, 15),
+  total_cases = c(40, 4, 25, 10, 103)
+  )
+```
+
+```{r}
+case_table %>% 
+  str_glue_data("{zone}: {new_cases} ({total_cases} total cases)")
+```
+
+You can make the statement appear in one line using str_c() (specifying the data frame and column names), and providing sep = and collapse = arguments.
+
+```{r}
+str_c(case_table$zone, case_table$new_cases, sep = " = ", collapse = ";  ")
+```
+
+```{r}
+str_c("New Cases: ", str_c(case_table$zone, case_table$new_cases, sep = " = ", collapse = ";  "))
+```
+
+## UNITE COLUMNS
+
+```{r}
+df <- data.frame(
+  case_ID = c(1:6),
+  symptoms  = c("jaundice, fever, chills",     # patient 1
+                "chills, aches, pains",        # patient 2 
+                "fever",                       # patient 3
+                "vomiting, diarrhoea",         # patient 4
+                "bleeding from gums, fever",   # patient 5
+                "rapid pulse, headache"),      # patient 6
+  outcome = c("Recover", "Death", "Death", "Recover", "Recover", "Recover"))
+
+df_split <- separate(df, symptoms, into = c("sym_1", "sym_2", "sym_3"), extra = "merge")
+df_split
+```
+
+Then unite the three symptoms column
+
+```{r}
+df_split %>% 
+  unite(
+    col = "all_symptoms",         # name of the new united column
+    c("sym_1", "sym_2", "sym_3"), # columns to unite
+    sep = ", ",                   # separator to use in united column
+    remove = TRUE,                # if TRUE, removes input cols from the data frame
+    na.rm = TRUE                  # if TRUE, missing values are removed before uniting
+  )
+```
+
+```{r}
+str_split(string = "jaundice, fever, chills",
+          pattern = ",")
+```
+
+```{r}
+symptoms <- c("jaundice, fever, chills",     # patient 1
+              "chills, aches, pains",        # patient 2 
+              "fever",                       # patient 3
+              "vomiting, diarrhoea",         # patient 4
+              "bleeding from gums, fever",   # patient 5
+              "rapid pulse, headache")       # patient 6
+
+str_split(symptoms, ",")                     # split each patient's symptoms
+```
+
+```{r}
+str_split(symptoms, ",", simplify = TRUE)
+```
+
+```{r}
+str_split(symptoms, ",", simplify = TRUE, n = 2)
+```
+
+str_split_fixed(), in which you do not give the simplify argument, but must instead designate the number of columns (n).
+
+```{r}
+str_split_fixed(symptoms, ",", n = 2)
+```
+
+Split Columns
+
+```{r}
+# third symptoms combined into second new column
+df %>% 
+  separate(symptoms, into = c("sym_1", "sym_2"), sep=",", extra = "merge")
+```
+
+```{r}
+# third symptoms combined into second new column
+df %>% 
+  separate(symptoms, into = c("sym_1", "sym_2"), sep=",", extra = "drop")
+```
+
+## ARRANGE ALPHABETICALLY
+
+```{r}
+# strings
+health_zones <- c("Alba", "Takota", "Delta")
+
+# return the alphabetical order
+str_order(health_zones)
+```
+
+```{r}
+str_sort(health_zones)
+```
+
+```{r}
+n_beds <- 10
+n_masks <- 20
+
+paste0("Regional hospital needs ", n_beds, " beds and ", n_masks, " masks.")
+```
+
+```{r}
+str_to_upper("California")
+str_to_lower("California")
+```
+
+```{r}
+str_to_title("go to the US state of california ")
+```
+
+```{r}
+tools::toTitleCase("This is the US state of california")
+```
+
+```{r}
+str_to_sentence("the patient must be transported")
+```
+
+## PAD LENGTH
+Use str_pad() to add characters to a string, to a minimum length. By default spaces are added, but you can also pad with other characters using the pad = argument.
+
+```{r}
+# ICD codes of differing length
+ICD_codes <- c("R10.13",
+               "R10.819",
+               "R17")
+
+# ICD codes padded to 7 characters on the right side
+str_pad(ICD_codes, 7, "right")
+
+# Pad with periods instead of spaces
+str_pad(ICD_codes, 7, "right", pad = ".")
+
+# Add leading zeros to two digits (e.g. for times minutes/hours)
+str_pad("4", 2, pad = "0") 
+```
+
+## TRUNCATION
+
+```{r}
+original <- "Symptom onset on 4/3/2020 with vomiting"
+str_trunc(original, 10, "center")
+```
+
