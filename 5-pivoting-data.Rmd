@@ -18,5 +18,12 @@ pacman::p_load(
 
 ```{r}
 count_df <- import("/home/jeremy/Work/Development/Projects/epidemic/datasets/malaria_facility_count_data.rds")
+linelist <- import("/home/jeremy/Work/Development/Projects/epidemic/datasets/linelist_cleaned.xlsx")
 head(count_df)
+head(linelist)
+```
+
+```{r}
+ggplot(count_df) +
+  geom_col(aes(x = data_date, y = malaria_tot), width = 1)
 ```
