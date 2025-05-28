@@ -3,3 +3,98 @@ title: "2-dates"
 output: html_document
 ---
 
+```{r}
+pacman::p_load(
+  lubridate,  # general package for handling and converting dates  
+  parsedate,  # has function to "guess" messy dates
+  aweek,      # another option for converting dates to weeks, and weeks to dates
+  zoo,        # additional date/time functions
+  here,       # file management
+  rio,        # data import/export
+  tidyverse
+)
+```
+
+```{r}
+linelist_cleaned <- import("/home/jeremy/Work/Development/Projects/epidemic/datasets/linelist_cleaned.xlsx")
+linelist_raw <- import("/home/jeremy/Work/Development/Projects/epidemic/datasets/linelist_raw.xlsx")
+head(linelist_cleaned)
+head(linelist_raw)
+```
+
+```{r}
+Sys.Date()
+```
+
+```{r}
+Sys.time()
+```
+
+```{r}
+names(linelist_cleaned)
+names(linelist_raw)
+```
+
+```{r}
+# Convert to class date
+linelist <- linelist_cleaned %>% 
+  mutate(date_onset = as.Date(date_onset, format = "%d/%m/%Y"))
+```
+
+```{r}
+ymd("20241011")
+mdy("10/11/2024")
+dmy("11 10 2024")
+dmy("11 October 2024")
+```
+
+```{r}
+two_digit_years <- c("15", "15", "16", "17")
+str_glue("20{two_digit_years}")
+```
+
+```{r}
+linelist <- linelist %>% 
+  mutate(onset_date = make_date(year = onset_year, month = onset_month, day = onset_day))
+```
+
+```{r}
+# Providing the Excel 'origin date' when converting Excel number dates
+linelist <- linelist %>% 
+  mutate(date_onset = as.numeric(date_onset)) %>%   # ensure class is numeric
+  mutate(date_onset = as.Date(date_onset, origin = "1899-12-30")) # convert to date using Excel origin
+```
+
+```{r}
+# Using parse_date() on the column date_onset
+linelist <- linelist %>%      
+  mutate(date_onset = parse_date(date_onset))
+```
+
+```{r}
+# packages
+pacman::p_load(tidyverse, lubridate, stringr)
+
+# time_admission is a column in hours:minutes
+linelist <- linelist %>%
+  # when time of admission is not given, assign the median admission time
+  mutate(
+    time_admission_clean = ifelse(
+      is.na(time_admission),         # if time is missing
+      median(time_admission),        # assign the median
+      time_admission                 # if not missing keep as is
+  )) %>%
+  # use str_glue() to combine date and time columns to create one character column
+  # and then use ymd_hm() to convert it to datetime
+  mutate(
+    date_time_of_admission = str_glue("{date_hospitalisation} {time_admission_clean}") %>% 
+      ymd_hm()
+  )
+  
+linelist
+```
+
+```{r}
+
+```
+
