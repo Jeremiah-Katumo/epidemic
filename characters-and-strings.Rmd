@@ -224,3 +224,168 @@ original <- "Symptom onset on 4/3/2020 with vomiting"
 str_trunc(original, 10, "center")
 ```
 
+## STANDARDIZE LENGTH
+
+```{r}
+# ICD codes of differing length
+ICD_codes   <- c("R10.13",
+                 "R10.819",
+                 "R17")
+
+# truncate to maximum length of 6
+ICD_codes_2 <- str_trunc(ICD_codes, 6)
+ICD_codes_2
+```
+
+```{r}
+# expand to minimum length of 6
+ICD_codes_3 <- str_pad(ICD_codes_2, 6, "right")
+ICD_codes_3
+```
+
+## REMOVING TRAILING/LEADING WHITESPACES
+
+```{r}
+# ID numbers with excess spaces on right
+IDs <- c("provA_1852  ", # two excess spaces
+         "provA_2345",   # zero excess spaces
+         "provA_9460 ")  # one excess space
+
+# IDs trimmed to remove excess spaces on right side only
+str_trim(IDs)
+```
+
+```{r}
+# original contains excess spaces within string
+str_squish("  Pt requires   IV saline\n") 
+```
+
+```{r}
+pt_course <- "Symptom onset 1/4/2020 vomiting chills fever. Pt saw traditional healer in home village on 2/4/2020. On 5/4/2020 pt symptoms worsened and was admitted to Lumta clinic. Sample was taken and pt was transported to regional hospital on 6/4/2020. Pt died at regional hospital on 7/4/2020."
+
+str_wrap(pt_course, 40)
+```
+
+```{r}
+cat(str_wrap(pt_course, 40))
+```
+
+```{r}
+# start and end third from left (3rd letter from left)
+str_sub("pneumonia", 3, 3)
+```
+
+```{r}
+# 6th from left, to the 1st from right
+str_sub("pneumonia", 6, -1)
+# 6th from left, to the 1st from right
+str_sub("pneumonia", -4, -2)
+# 4th from left to a position outside the string
+str_sub("pneumonia", 4, 15)
+```
+
+## Extract by word position
+
+```{r}
+# strings to evaluate
+chief_complaints <- c("I just got out of the hospital 2 days ago, but still can barely breathe.",
+                      "My stomach hurts",
+                      "Severe ear pain")
+
+# extract 1st to 3rd words of each string
+word(chief_complaints, start = 1, end = 3, sep = " ")
+```
+
+```{r}
+word <- "pneumonia"
+
+# convert the third and fourth characters to X 
+str_sub(word, 3, 4) <- "XX"
+
+# print
+word
+```
+
+```{r}
+words <- c("pneumonia", "tubercolosis", "HIV")
+
+# convert the third and fourth characters to X 
+str_sub(words, 3, 4) <- "XX"
+
+words
+```
+
+```{r}
+str_length("abc")
+```
+
+## Detect Patterns
+
+```{r}
+str_detect(string = "primary school teacher", pattern = "teach")
+
+# The argument negate = can be included and set to TRUE if you want to know if the pattern is NOT present.
+str_detect(string = "primary school teacher", pattern = "teach", negate = TRUE)
+
+# To ignore case/capitalization, wrap the pattern within regex(), and within 
+# regex() add the argument ignore_case = TRUE (or T as shorthand).
+str_detect(string = "Teacher", pattern = regex("teach", ignore_case = T))
+```
+
+```{r}
+# a vector/column of occupations 
+occupations <- c("field laborer",
+                 "university professor",
+                 "primary school teacher & tutor",
+                 "tutor",
+                 "nurse at regional hospital",
+                 "lineworker at Amberdeen Fish Factory",
+                 "physican",
+                 "cardiologist",
+                 "office worker",
+                 "food service")
+
+# Detect presence of pattern "teach" in each string - output is vector of TRUE/FALSE
+str_detect(occupations, "teach")
+```
+
+```{r}
+# If you need to count the TRUEs, simply sum() the output. This counts the number TRUE.
+sum(str_detect(occupations, "teach"))
+```
+
+```{r}
+# To search inclusive of multiple terms, include them separated by OR bars (|) 
+# within the pattern = argument, as shown below:
+sum(str_detect(string = occupations, pattern = "teach|professor|tutor"))
+```
+
+If you need to build a long list of search terms, you can combine them using str_c() and sep = |, then define this is a character object, and then reference the vector later more succinctly. The example below includes possible occupation search terms for front-line medical providers.
+
+```{r}
+# search terms
+occupation_med_frontline <- str_c("medical", "medicine", "hcw", "healthcare", "home care", "home health",
+                                "surgeon", "doctor", "doc", "physician", "surgery", "peds", "pediatrician",
+                               "intensivist", "cardiologist", "coroner", "nurse", "nursing", "rn", "lpn",
+                               "cna", "pa", "physician assistant", "mental health",
+                               "emergency department technician", "resp therapist", "respiratory",
+                                "phlebotomist", "pharmacy", "pharmacist", "hospital", "snf", "rehabilitation",
+                               "rehab", "activity", "elderly", "subacute", "sub acute",
+                                "clinic", "post acute", "therapist", "extended care",
+                                "dental", "dential", "dentist", sep = "|")
+
+occupation_med_frontline
+```
+
+```{r}
+sum(str_detect(string = occupations, pattern = occupation_med_frontline))
+```
+
+```{r}
+outcome <- c("Karl: dead",
+            "Samantha: dead",
+            "Marco: not dead")
+
+str_replace_all(string = outcome, pattern = "dead", replacement = "deceased")
+```
+
