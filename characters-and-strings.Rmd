@@ -1,0 +1,54 @@
+---
+title: "Characters and Strings"
+output: html_document
+date: "2025-05-28"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+pacman::p_load(
+  stringr,    # many functions for handling strings
+  tidyverse,  # for optional data manipulation
+  tools       # alternative for converting title cases
+)
+```
+
+```{r}
+linelist_cleaned <- import("/home/jeremy/Work/Development/Projects/epidemic/datasets/linelist_cleaned.rds")
+head(linelist_cleaned)
+```
+
+```{r}
+# Combine Strings
+str_c("String1", "String2", "String3")
+```
+
+```{r}
+str_c("String1", "String2", "String3")
+```
+
+```{r}
+str_c("String1", "String2", "String3", sep = ", ")
+```
+
+```{r}
+first_names <- c("abdul", "fahruk", "janice") 
+last_names  <- c("hussein", "akinleye", "okeke")
+
+# sep displays between the respective input strings, while collapse displays between the elements produced
+str_c(first_names, last_names, sep = " ", collapse = ";  ")
+```
+
+```{r}
+# For newlines to print correctly, the phrase may need to be wrapped in cat()
+cat(str_c(first_names, last_names, sep = " ", collapse = ";\n"))
+```
+
+```{r}
+# Dynamic Strings
+str_glue("Data include {nrow(linelist_cleaned)} cases and are current to {format(Sys.Date(), '%d %b %Y')}.")
+```
+

@@ -139,3 +139,25 @@ test_format <- linelist %>%
 table(test_format$yearmon)
 ```
 
+```{r}
+# Make aggregated dataset of weekly case counts
+weekly_counts <- linelist %>% 
+  drop_na(date_onset) %>%             # remove cases missing onset date
+  mutate(weekly_cases = floor_date(   # make new column, week of onset
+    date_onset,
+    unit = "week")) %>%            
+  count(weekly_cases) %>%           # group data by week and count rows per group (creates column 'n')
+  tidyr::complete(                  # ensure all weeks are present, even those with no cases reported
+    weekly_cases = seq.Date(          # re-define the "weekly_cases" column as a complete sequence,
+      from = min(weekly_cases),       # from the minimum date
+      to = max(weekly_cases),         # to the maxiumum date
+      by = "week"),                   # by weeks
+    fill = list(n = 0))             # fill-in NAs in the n counts column with 0
+
+weekly_counts
+```
+
+```{r}
+
+```
+
