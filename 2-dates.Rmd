@@ -95,6 +95,47 @@ linelist
 ```
 
 ```{r}
+# Extract Time
+linelist <- linelist %>%
+  mutate(hour_admit = hour(strptime(time_admission, format = "%H:%M"))) %>%
+  mutate(time_period = case_when(
+    hour_admit > 06 & hour_admit < 12 ~ "Morning",
+    hour_admit >= 12 & hour_admit < 17 ~ "Afternoon",
+    hour_admit >= 17 & hour_admit < 21 ~ "Evening",
+    hour_admit >=21 | hour_admit <= 6 ~ "Night"))
+```
 
+```{r}
+linelist <- linelist %>%
+  mutate(date_onset = dmy(date_onset),
+         date_hospitalisation = dmy(date_hospitalisation)) %>%
+  filter(month(date_onset) == 3) %>%
+  mutate(days_onset_to_hosp = date_hospitalisation - date_onset)
+```
+
+```{r}
+names(linelist)
+```
+
+```{r}
+median(linelist_delay$days_onset_to_hosp, na.rm = T)
+```
+
+```{r}
+# create new column 
+test_zoo <- linelist %>% 
+     mutate(yearmonth = zoo::as.yearmon(date_onset))
+
+# print table
+table(test_zoo$yearmon)
+```
+
+```{r}
+# create new column
+test_format <- linelist %>% 
+     mutate(yearmonth = format(date_onset, "%b %Y"))
+
+# print table
+table(test_format$yearmon)
 ```
 
