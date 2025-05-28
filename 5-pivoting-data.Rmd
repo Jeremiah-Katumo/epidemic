@@ -1,0 +1,22 @@
+---
+title: "Pivoting Data"
+output: html_document
+date: "2025-05-28"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+pacman::p_load(
+  rio,          # File import
+  here,         # File locator
+  kableExtra,   # Build and manipulate complex tables
+  tidyverse)    # data management + ggplot2 graphics
+```
+
+```{r}
+count_df <- import("/home/jeremy/Work/Development/Projects/epidemic/datasets/malaria_facility_count_data.rds")
+head(count_df)
+```
