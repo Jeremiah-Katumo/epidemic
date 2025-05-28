@@ -160,4 +160,3 @@ weekly_counts
 ```{r}
 
 ```
-

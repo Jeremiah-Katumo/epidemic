@@ -199,6 +199,7 @@ str_to_sentence("the patient must be transported")
 ```
 
 ## PAD LENGTH
+
 Use str_pad() to add characters to a string, to a minimum length. By default spaces are added, but you can also pad with other characters using the pad = argument.
 
 ```{r}
@@ -360,7 +361,7 @@ sum(str_detect(occupations, "teach"))
 sum(str_detect(string = occupations, pattern = "teach|professor|tutor"))
 ```
 
-If you need to build a long list of search terms, you can combine them using str_c() and sep = |, then define this is a character object, and then reference the vector later more succinctly. The example below includes possible occupation search terms for front-line medical providers.
+If you need to build a long list of search terms, you can combine them using str_c() and sep = \|, then define this is a character object, and then reference the vector later more succinctly. The example below includes possible occupation search terms for front-line medical providers.
 
 ```{r}
 # search terms
@@ -454,4 +455,3 @@ str_subset(occupations, "teach|prof|tutor")
 ```{r}
 str_count(occupations, regex("teach|prof|tutor", ignore_case = TRUE))
 ```
-
