@@ -389,3 +389,69 @@ outcome <- c("Karl: dead",
 str_replace_all(string = outcome, pattern = "dead", replacement = "deceased")
 ```
 
+## DETECT WITHIN LOGIC
+
+```{r}
+df <- df %>% 
+  mutate(is_educator = case_when(
+    # term search within occupation, not case sensitive
+    str_detect(occupations,
+               regex("teach|prof|tutor|university",
+                     ignore_case = TRUE))              ~ "Educator",
+    # all others
+    TRUE                                               ~ "Not an educator"))
+```
+
+```{r}
+df <- df %>% 
+  # value in new column is_educator is based on conditional logic
+  mutate(is_educator = case_when(
+    
+    # occupation column must meet 2 criteria to be assigned "Educator":
+    # it must have a search term AND NOT any exclusion term
+    
+    # Must have a search term
+    str_detect(occupations,
+               regex("teach|prof|tutor|university", ignore_case = T)) &              
+    
+    # AND must NOT have an exclusion term
+    str_detect(occupations,
+               regex("admin", ignore_case = T),
+               negate = TRUE                        ~ "Educator"
+    
+    # All rows not meeting above criteria
+    TRUE                                            ~ "Not an educator")))
+```
+
+```{r}
+str_locate("I wish", "sh")
+```
+
+```{r}
+phrases <- c("I wish", "I hope", "he hopes", "He hopes")
+
+str_locate(phrases, "h")     # position of *first* instance of the pattern
+```
+
+```{r}
+str_locate_all(phrases, "h" ) # position of *every* instance of the pattern
+```
+
+## EXTRACT MATCHES
+
+```{r}
+str_extract_all(occupations, "teach|prof|tutor")
+```
+
+```{r}
+str_extract(occupations, "teach|prof|tutor")
+```
+
+```{r}
+str_subset(occupations, "teach|prof|tutor")
+```
+
+```{r}
+str_count(occupations, regex("teach|prof|tutor", ignore_case = TRUE))
+```
+
