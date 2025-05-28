@@ -8,16 +8,6 @@ date: "2025-05-28"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
-```
-
 ## Including Plots
 
 You can also embed plots, for example:
@@ -27,3 +17,53 @@ plot(pressure)
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+pacman::p_load(
+  rio,           # import/export
+  here,          # filepaths
+  lubridate,     # working with dates
+  forcats,       # factors
+  aweek,         # create epiweeks with automatic factor levels
+  janitor,       # tables
+  tidyverse      # data mgmt and viz
+)
+```
+
+```{r}
+linelist_cleaned <- import("/home/jeremy/Work/Development/Projects/epidemic/datasets/linelist_cleaned.rds")
+head(linelist_cleaned)
+```
+
+```{r}
+linelist <- linelist_cleaned
+```
+
+```{r}
+linelist <- linelist %>% 
+  mutate(delay_cat = case_when(
+    # criteria                                   # new value if TRUE
+    days_onset_hosp < 2                        ~ "<2 days",
+    days_onset_hosp >= 2 & days_onset_hosp < 5 ~ "2-5 days",
+    days_onset_hosp >= 5                       ~ ">5 days",
+    is.na(days_onset_hosp)                     ~ NA_character_,
+    TRUE                                       ~ "Check me"))
+```
+
+```{r}
+table(linelist$delay_cat, useNA = "always")
+```
+
+```{r}
+ggplot(data = linelist)+
+  geom_bar(mapping = aes(x = delay_cat))
+```
+
+## Convert to Factor
+
+```{r}
+linelist <- linelist %>%
+  mutate(delay_cat = fct_relevel(delay_cat))
+
+levels(linelist$delay_cat)
+```
