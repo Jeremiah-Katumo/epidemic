@@ -67,3 +67,201 @@ linelist <- linelist %>%
 
 levels(linelist$delay_cat)
 ```
+
+The function `fct_relevel()` has the additional utility of allowing you to manually specify the level order. Simply write the level values in order, in quotation marks, separated by commas, as shown below. Note that the spelling must exactly match the values. If you want to create levels that do not exist in the data, use [`fct_expand()` instead](https://www.epirhandbook.com/en/new_pages/factors.html#fct_add)).
+
+```{r}
+linelist <- linelist %>%
+  mutate(delay_cat = fct_relevel(delay_cat, "<2 days", "2-5 days", ">5 days"))
+
+levels(linelist$delay_cat)
+```
+
+```{r}
+ggplot(data = linelist)+
+  geom_bar(mapping = aes(x = delay_cat))
+```
+
+## Add or Drop Levels
+
+If you need to add levels to a factor, you can do this with `fct_expand()`. Just write the column name followed by the new levels (separated by commas). By tabulating the values, we can see the new levels and the zero counts. You can use `table()` from **base** R, or `tabyl()` from **janitor**:
+
+```{r}
+# Add
+linelist %>% 
+  mutate(delay_cat = fct_expand(delay_cat, "Not admitted to hospital", "Transfer to other jurisdiction")) %>% 
+  tabyl(delay_cat)   # print table
+```
+
+If you use `fct_drop()`, the “unused” levels with zero counts will be dropped from the set of levels. The levels we added above (“Not admitted to a hospital”) exists as a level but no rows actually have those values. So they will be dropped by applying `fct_drop()` to our factor column:
+
+```{r}
+# Drop
+linelist %>% 
+  mutate(delay_cat = fct_drop(delay_cat)) %>% 
+  tabyl(delay_cat)
+```
+
+```{r}
+# re-define level order
+linelist <- linelist %>% 
+  mutate(delay_cat = fct_relevel(delay_cat, c("<2 days", "2-5 days", ">5 days")))
+```
+
+```{r}
+# re-define level order
+linelist %>% 
+  mutate(delay_cat = fct_relevel(delay_cat, "<2 days", after = 1)) %>% 
+  tabyl(delay_cat)
+```
+
+```{r}
+# Alpha-numeric default order - no adjustment within ggplot
+ggplot(data = linelist)+
+    geom_bar(mapping = aes(x = delay_cat))
+
+# Factor level order adjusted within ggplot
+ggplot(data = linelist)+
+  geom_bar(mapping = aes(x = fct_relevel(delay_cat, c("<2 days", "2-5 days", ">5 days"))))
+```
+
+```{r}
+# By frequency
+# ordered by frequency
+ggplot(data = linelist, aes(x = fct_infreq(delay_cat)))+
+  geom_bar()+
+  labs(x = "Delay onset to admission (days)",
+       title = "Ordered by frequency")
+
+# reversed frequency
+ggplot(data = linelist, aes(x = fct_rev(fct_infreq(delay_cat))))+
+  geom_bar()+
+  labs(x = "Delay onset to admission (days)",
+       title = "Reverse of order by frequency")
+```
+
+```{r}
+# By Appearance
+# boxplots ordered by original factor levels
+ggplot(data = linelist)+
+  geom_boxplot(
+    aes(x = delay_cat,
+        y = ct_blood, 
+        fill = delay_cat))+
+  labs(x = "Delay onset to admission (days)",
+       title = "Ordered by original alpha-numeric levels")+
+  theme_classic()+
+  theme(legend.position = "none")
+
+
+# boxplots ordered by median CT value
+ggplot(data = linelist)+
+  geom_boxplot(
+    aes(x = fct_reorder(delay_cat, ct_blood, "median"),
+        y = ct_blood,
+        fill = delay_cat))+
+  labs(x = "Delay onset to admission (days)",
+       title = "Ordered by median CT value in group")+
+  theme_classic()+
+  theme(legend.position = "none")
+```
+
+```{r}
+# By End Value
+epidemic_data <- linelist %>%         # begin with the linelist   
+    filter(date_onset < as.Date("2014-09-21")) %>%    # cut-off date, for visual clarity
+    count(                                            # get case counts per week and by hospital
+      epiweek = lubridate::floor_date(date_onset, "week"),  
+      hospital                                            
+    ) 
+  
+ggplot(data = epidemic_data)+                       # start plot
+  geom_line(                                        # make lines
+    aes(
+      x = epiweek,                                  # x-axis epiweek
+      y = n,                                        # height is number of cases per week
+      color = fct_reorder2(hospital, epiweek, n)))+ # data grouped and colored by hospital, with factor order by height at end of plot
+  labs(title = "Factor levels (and legend display) by line height at end of plot",
+       color = "Hospital")                          # change legend title
+```
+
+## Missing Values
+
+```{r}
+linelist %>% 
+  mutate(delay_cat = fct_explicit_na(delay_cat, na_level = "Missing delay")) %>% 
+  tabyl(delay_cat)
+```
+
+```{r}
+levels(linelist$delay_cat)
+```
+
+The new levels are created using syntax `fct_recode(column, "new" = "old", "new" = "old", "new" = "old")` and printed:
+
+```{r}
+linelist %>% 
+  mutate(delay_cat = fct_recode(
+    delay_cat,
+    "Less than 2 days" = "<2 days",
+    "2 to 5 days"      = "2-5 days",
+    "More than 5 days" = ">5 days")) %>% 
+  tabyl(delay_cat)
+```
+
+## Reduce into 'Other'
+
+You can use `fct_other()` to manually assign factor levels to an “Other” level. Below, all levels in the column `hospital`, aside from “Port Hospital” and “Central Hospital”, are combined into “Other”. You can provide a vector to either `keep =`, or `drop =`. You can change the display of the “Other” level with `other_level =`.
+
+```{r}
+linelist %>%    
+  mutate(hospital = fct_other(                      # adjust levels
+    hospital,
+    keep = c("Port Hospital", "Central Hospital"),  # keep these separate
+    other_level = "Other Hospital")) %>%            # All others as "Other Hospital"
+  tabyl(hospital)                                   # print table
+```
+
+## Reduce into Frequency
+
+```{r}
+linelist %>%    
+  mutate(hospital = fct_lump(                      # adjust levels
+    hospital,
+    n = 2,                                          # keep top 2 levels
+    other_level = "Other Hospital")) %>%            # all others as "Other Hospital"
+  tabyl(hospital)                                   # print table
+```
+
+```{r}
+ggplot(data = linelist)+
+  geom_bar(mapping = aes(x = hospital, fill = age_cat)) +
+  scale_fill_discrete(drop = FALSE)+                        # show all age groups in the legend, even those not present
+  labs(
+    title = "All age groups will appear in legend, even if not present in data")
+```
+
+```{r}
+linelist %>% 
+  mutate(epiweek_date = floor_date(date_onset, "week")) %>%  # create week column
+  ggplot()+                                                  # begin ggplot
+  geom_histogram(mapping = aes(x = epiweek_date))+           # histogram of date of onset
+  scale_x_date(date_labels = "%Y-W%W")                       # adjust disply of dates to be YYYY-WWw
+```
+
+```{r}
+linelist <- linelist %>% 
+  mutate(epiweek_date = floor_date(date_onset, "week"),       # create epiweeks (YYYY-MM-DD)
+         epiweek_formatted = format(epiweek_date, "%Y-W%W"),  # Convert to display (YYYY-WWw)
+         epiweek_formatted = factor(epiweek_formatted))       # Convert to factor
+
+# Display levels
+levels(linelist$epiweek_formatted)
+```
+
+```{r}
+df <- linelist %>% 
+  mutate(epiweek = date2week(date_onset, week_start = "Monday", factor = TRUE))
+
+levels(df$epiweek)
+```
