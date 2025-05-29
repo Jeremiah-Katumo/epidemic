@@ -103,3 +103,63 @@ linelist %>%
 ```
 
 ## Counts and Tallies
+
+```{r}
+linelist %>% 
+  tally()
+```
+
+```{r}
+linelist %>% 
+  group_by(outcome) %>% 
+  tally(sort = TRUE)
+```
+
+```{r}
+linelist %>% 
+  count(outcome)
+```
+
+```{r}
+linelist %>% 
+  count(age_class = ifelse(age >= 18, "adult", "child"), sort = T)
+```
+
+```{r}
+linelist %>% 
+  # produce counts by unique outcome-gender groups
+  count(gender, hospital) %>% 
+  # gather rows by gender (3) and count number of hospitals per gender (6)
+  count(gender, name = "hospitals per gender" ) 
+```
+
+In contrast to `count()` and `summarise()`, you can use `add_count()` to *add* a new column `n` with the counts of rows per group *while retaining all the other data frame columns*.
+
+```{r}
+linelist %>% 
+  as_tibble() %>%                   # convert to tibble for nicer printing 
+  add_count(hospital) %>%           # add column n with counts by hospital
+  select(hospital, n, everything()) # re-arrange for demo purposes
+```
+
+```{r}
+linelist %>%                                  # case linelist
+  tabyl(age_cat, gender) %>%                  # cross-tabulate counts of two columns
+  adorn_totals(where = "row") %>%             # add a total row
+  adorn_percentages(denominator = "col") %>%  # convert to proportions with column denominator
+  adorn_pct_formatting() %>%                  # convert proportions to percents
+  adorn_ns(position = "front") %>%            # display as: "count (percent)"
+  adorn_title(                                # adjust titles
+    row_name = "Age Category",
+    col_name = "Gender")
+```
+
+## Grouping by date
+
+```{r}
+daily_counts <- linelist %>% 
+  drop_na(date_onset) %>%        # remove that were missing date_onset
+  count(date_onset)              # count number of rows per unique date
+
+daily_counts
+```
