@@ -163,3 +163,93 @@ daily_counts <- linelist %>%
 
 daily_counts
 ```
+
+```{r}
+daily_counts <- linelist %>% 
+  drop_na(date_onset) %>%                 # remove case missing date_onset
+  count(date_onset) %>%                   # count number of rows per unique date
+  complete(                               # ensure all days appear even if no cases
+    date_onset = seq.Date(                # re-define date colume as daily sequence of dates
+      from = min(date_onset, na.rm=T), 
+      to = max(date_onset, na.rm=T),
+      by = "day"),
+    fill = list(n = 0))                   # set new filled-in rows to display 0 in column n (not NA as default) 
+
+daily_counts
+```
+
+```{r}
+# Make dataset of weekly case counts
+weekly_counts <- linelist %>% 
+  drop_na(date_onset) %>%                 # remove cases missing date_onset
+  mutate(week = lubridate::floor_date(date_onset, unit = "week")) %>%  # new column of week of onset
+  count(week) %>%                         # group data by week and count rows per group
+  complete(                               # ensure all days appear even if no cases
+    week = seq.Date(                      # re-define date column as daily sequence of dates
+      from = min(week, na.rm=T), 
+      to = max(week, na.rm=T),
+      by = "week"),
+    fill = list(n = 0))                   # set new filled-in rows to display 0 in column n (not NA as default) 
+
+weekly_counts
+```
+
+```{r}
+# Make dataset of monthly case counts
+monthly_counts <- linelist %>% 
+  drop_na(date_onset) %>% 
+  mutate(month = lubridate::floor_date(date_onset, unit = "months")) %>%  # new column, 1st of month of onset
+  count(month) %>%                          # count cases by month
+  complete(
+    month = seq.Date(
+      min(month, na.rm=T),     # include all months with no cases reported
+      max(month, na.rm=T),
+      by="month"),
+    fill = list(n = 0))
+
+monthly_counts
+```
+
+## Filter on grouped data
+
+```{r}
+# Slice rows per group
+linelist %>%
+  group_by(hospital) %>%
+  arrange(hospital, date_hospitalisation) %>%
+  slice_head(n = 5) %>% 
+  arrange(hospital) %>%                            # for display
+  select(case_id, hospital, date_hospitalisation)  # for display
+```
+
+```{r}
+# Filter on group size
+linelist %>% 
+  as_tibble() %>% 
+  add_count(hospital) %>% # add "number of rows admitted to same hospital as this row" 
+  select(hospital, n, everything())
+```
+
+It then becomes easy to filter for case rows who were hospitalized at a “small” hospital, say, a hospital that admitted fewer than 500 patients:
+
+```{r}
+linelist %>%
+  add_count(hospital) %>%
+  filter(n < 500)
+```
+
+## Mutate on grouped data
+
+```{r}
+linelist %>% 
+  # group data by hospital (no change to linelist yet)
+  group_by(hospital) %>% 
+  # new columns
+  mutate(
+    # mean days to admission per hospital (rounded to 1 decimal)
+    group_delay_admit = round(mean(days_onset_hosp, na.rm=T), 1),
+    # difference between row's delay and mean delay at their hospital (rounded to 1 decimal)
+    diff_to_group     = round(days_onset_hosp - group_delay_admit, 1)) %>%
+  # select certain rows only - for demonstration/viewing purposes
+  select(case_id, hospital, days_onset_hosp, group_delay_admit, diff_to_group)
+```
